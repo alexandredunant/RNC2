@@ -1,0 +1,21 @@
+the purpose of this script is to create a theoretical temporal network
+assuming the following processes workflow:
+
+Rainfall -> Catchment -> River -> River -> Infrastructure (Flooding)
+
+in more details:
+
+Probability of rain
+        |
+Quantity of rain per hour
+        |
+Storage in each catchment (0 if no rain)
+        |
+Effective rainfall
+        |
+Local discharge at catchment
+        |
+Total discharge at catchment to river
+        |
+Update Storage in each catchment
+        |
