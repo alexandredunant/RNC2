@@ -7,7 +7,7 @@ import os
 from mods_catchment_flow import *
 from mod_river_flow import *
 
-os.chdir("/Users/alexdunant/Library/CloudStorage/OneDrive-DurhamUniversity/workfolder/rnc2_project/code")
+os.chdir("/Volumes/prs/RNC2_docs")
 
 # Define catchments and their corresponding parameters
 # catchments = pd.read_csv("../docs/Catchments_updt_sorted.csv", index_col=0)
