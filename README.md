@@ -30,7 +30,7 @@ Network models have been proposed for cascades of natural hazard events, for exa
 
 ### River Flow Simulation Module
 
-- [mod_river_flow.py](mod_river_flow.py): This module contains functions for simulating the flow of water in a river network and visualizing the flow dynamics. It is used as part of the main simulation script.
+- [mod_river_flow.py]([mod_river_flow.py](https://github.com/37stu37/rnc2_scripts/blob/main/scripts/mod_river_flow.py)): This module contains functions for simulating the flow of water in a river network and visualizing the flow dynamics. It is used as part of the main simulation script.
 
 ### Catchment Flow Simulation Module
 
