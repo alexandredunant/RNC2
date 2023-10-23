@@ -1,6 +1,6 @@
 # Including Dynamics in a Network Based Stochastic Multi-Hazard Model
 
-![Project Image](project_image.png)
+![RNC2 project](https://github.com/37stu37/rnc2_scripts/blob/main/project%20image.png)
 
 > Learn more about the [Resilience to Nature's Challenges National Science Challenge](https://resiliencechallenge.nz/).
 
