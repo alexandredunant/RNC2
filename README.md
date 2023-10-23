@@ -8,11 +8,15 @@
 
 - [Publications](#publications)
   - [Publication 1](#publication-1)
+    - [Authors](#authors)
     - [Abstract 1](#abstract)
+    - [Scripts](#scripts)
+    - [Data](#data)
   - [Publication 2](#publication-2)
-- [Scripts](#scripts)
-- [Data](#data)
-- [Authors](#authors)
+    - [Authors](#authors)
+    - [Abstract 2](#abstract)
+    - [Scripts](#scripts)
+    - [Data](#data)
 
 ---
 
