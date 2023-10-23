@@ -13,10 +13,10 @@
 - Alex Dunant
   - *University of Durham, Durham UK*
 
-- David Harte§
+- David Harte
   - *Statistics Research Associates, Wellington NZ*
   
-- Melody Whitehead∗
+- Melody Whitehead
   - *Massey University, Palmerston North NZ*
   
 - Stuart Mead
