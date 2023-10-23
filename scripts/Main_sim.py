@@ -7,11 +7,11 @@ import os
 from mods_catchment_flow import *
 from mod_river_flow import *
 
-os.chdir("/Volumes/prs/RNC2_docs")
+os.chdir(".")
 
 # Define catchments and their corresponding parameters
 # catchments = pd.read_csv("../docs/Catchments_updt_sorted.csv", index_col=0)
-catchments = gpd.read_file("../docs/Catchments_river_nodes.gpkg")
+catchments = gpd.read_file("../data/Catchments_river_nodes.gpkg")
 catchments = catchments[catchments['River System'] == 'Rangitaki']
 catchments = catchments.sort_values('Source_river')
 catchments['streamflow'] = np.zeros(len(catchments))
