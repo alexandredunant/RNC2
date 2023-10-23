@@ -4,24 +4,6 @@
 
 > Learn more about the [Resilience to Nature's Challenges National Science Challenge](https://resiliencechallenge.nz/).
 
-## Authors
-
-- Mark Bebbington
-  - *Massey University, Palmerston North NZ*
-  - *Corresponding author: [m.bebbington@massey.ac.nz](mailto:m.bebbington@massey.ac.nz)*
-
-- Alex Dunant
-  - *University of Durham, Durham UK*
-
-- David Harte
-  - *Statistics Research Associates, Wellington NZ*
-  
-- Melody Whitehead
-  - *Massey University, Palmerston North NZ*
-  
-- Stuart Mead
-  - *Massey University, Palmerston North NZ*
-
 
 ---
 
@@ -61,3 +43,22 @@ Network models have been proposed for cascades of natural hazard events, for exa
 The GIS input data required for the scripts are located in the [data](data) folder. This data includes geospatial information about catchments, river networks, and other relevant parameters necessary for the simulations.
 
 ---
+
+## Authors
+
+- Mark Bebbington
+  - *Massey University, Palmerston North NZ*
+  - *Corresponding author: [m.bebbington@massey.ac.nz](mailto:m.bebbington@massey.ac.nz)*
+
+- Alex Dunant
+  - *University of Durham, Durham UK*
+
+- David Harte
+  - *Statistics Research Associates, Wellington NZ*
+  
+- Melody Whitehead
+  - *Massey University, Palmerston North NZ*
+  
+- Stuart Mead
+  - *Massey University, Palmerston North NZ*
+
