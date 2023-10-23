@@ -34,7 +34,7 @@ Network models have been proposed for cascades of natural hazard events, for exa
 
 ### Catchment Flow Simulation Module
 
-- [mods_catchment_flow.py](mods_catchment_flow.py): This module includes functions for generating daily rainfall amounts, simulating catchment reservoir flow, and managing the flow of water in catchment areas.
+- [mods_catchment_flow.py](https://github.com/37stu37/rnc2_scripts/blob/main/scripts/mods_catchment_flow.py): This module includes functions for generating daily rainfall amounts, simulating catchment reservoir flow, and managing the flow of water in catchment areas.
 
 ---
 
