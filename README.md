@@ -78,14 +78,14 @@ The GIS input data required for the scripts are located in the [data](data) fold
 - [Script 1](https://github.com/37stu37/rnc2_scripts/blob/main/scripts/Publication2/Script1.py): Description of the script.
 - [Script 2](https://github.com/37stu37/rnc2_scripts/blob/main/scripts/Publication2/Script2.py): Description of the script.
 
----
+--
 
 ## Scripts
 
 - [Common Script 1](https://github.com/37stu37/rnc2_scripts/blob/main/scripts/Common/Script1.py): Description of the script.
 - [Common Script 2](https://github.com/37stu37/rnc2_scripts/blob/main/scripts/Common/Script2.py): Description of the script.
 
----
+--
 
 ## Data
 
