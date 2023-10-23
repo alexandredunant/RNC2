@@ -65,7 +65,7 @@ The GIS input data required for the scripts are located in the [data](data) fold
 
 ------
 
-### Publication 2: Title 
+### Publication 2: WIP 
 
 - **Authors**:
   - Author 1
