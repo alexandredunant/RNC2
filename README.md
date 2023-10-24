@@ -8,13 +8,13 @@
 
 - [Publications](#publications)
   - [Publication 1](#publication-1)
-    - [Authors](#authors)
     - [Abstract 1](#abstract)
+    - - [Authors](#authors)
     - [Scripts](#scripts)
     - [Data](#data)
   - [Publication 2](#publication-2)
-    - [Authors](#authors)
     - [Abstract 2](#abstract)
+    - [Authors](#authors)
     - [Scripts](#scripts)
     - [Data](#data)
 
