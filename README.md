@@ -44,27 +44,6 @@ Network models have been proposed for cascades of natural hazard events, for exa
    
 --
 
-#### Scripts
-
-##### Main Simulation Script
-
-- [Main_sim.py](https://github.com/37stu37/rnc2_scripts/blob/main/scripts/Main_sim.py): This script is the main simulation script responsible for simulating the flow of water in a river catchment system. It includes functions for modeling catchment behavior and river flow.
-
-##### River Flow Simulation Module
-
-- [mod_river_flow.py](https://github.com/37stu37/rnc2_scripts/blob/main/scripts/mod_river_flow.py): This module contains functions for simulating the flow of water in a river network and visualizing the flow dynamics. It is used as part of the main simulation script.
-
-##### Catchment Flow Simulation Module
-
-- [mods_catchment_flow.py](https://github.com/37stu37/rnc2_scripts/blob/main/scripts/mods_catchment_flow.py): This module includes functions for generating daily rainfall amounts, simulating catchment reservoir flow, and managing the flow of water in catchment areas.
-
---
-
-#### Data
-The GIS input data required for the scripts are located in the [data](data) folder. This data includes geospatial information about catchments, river networks, and other relevant parameters necessary for the simulations.
-
-------
-
 ### Publication 2: WIP 
 
 - **Authors**:
