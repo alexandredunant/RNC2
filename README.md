@@ -84,6 +84,6 @@ The `engines` directory contains the core components of the model:
 
 ## Data
 
-The GIS input https://www.google.com/search?q=data required for the scripts are located in the `data` folder (not included in this repository). This https://www.google.com/search?q=data includes geospatial information about catchments, river networks, and other relevant parameters necessary for the simulations. Specifically, the model requires a DEM, which can be provided as a GeoTIFF file. If a local DEM is not found, the `simulate_case.py` script can download one using `pygmt`.
+The GIS input data required for the scripts are located in the `data` folder (not included in this repository). Specifically, the model requires a DEM, which can be provided as a GeoTIFF file. If a local DEM is not found, the `simulate_case.py` script can download one using `pygmt`.
 
 -----
