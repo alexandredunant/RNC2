@@ -1,77 +1,89 @@
 ![RNC2 project](https://github.com/37stu37/rnc2_scripts/blob/main/project%20image.png)
 
+-----
+
 > Learn more about the [Resilience to Nature's Challenges National Science Challenge](https://resiliencechallenge.nz/).
 
----
+-----
 
 ## Table of Contents
 
-- [Publications](#publications)
-  - [Publication 1](#publication-1)
-    - [Abstract 1](#abstract)
-    - - [Authors](#authors)
-    - [Scripts](#scripts)
-    - [Data](#data)
-  - [Publication 2](#publication-2)
-    - [Abstract 2](#abstract)
-    - [Authors](#authors)
-    - [Scripts](#scripts)
-    - [Data](#data)
+  - [Overview](https://www.google.com/search?q=%23overview)
+  - [Project Structure](https://www.google.com/search?q=%23project-structure)
+  - [Usage](https://www.google.com/search?q=%23usage)
+  - [Key Scripts and Engines](https://www.google.com/search?q=%23key-scripts-and-engines)
+  - [Data](https://www.google.com/search?q=%23data)
+  - [Publications](https://www.google.com/search?q=%23publications)
 
----
+-----
 
-## Publications
+## Overview
 
-### Publication 1: Including Dynamics in a Network Based Stochastic Multi-Hazard Model
+This repository contains a set of Python scripts for simulating the hydrological and sedimentological response of a river catchment to rainfall and volcanic ashfall. The primary model is a hydrology and sediment transport model that can be run with an hourly SCS-CN (Soil Conservation Service Curve Number) Unit Hydrograph model. The model is designed to simulate the effects of volcanic eruptions on river systems, including ash deposition, wash-off from hillslopes, and transport through the river network.
 
-#### Abstract:
-Network models have been proposed for cascades of natural hazard events, for example storm, flooded river, breached stop banks, damaged infrastructure. However, these have generally not taken time into account, with the cascade of events effectively assumed to occur instantaneously. We extend the methodology to account for multiple temporal processes, often occurring on quite different time scales. Further, since state of the art physical models generally involve heavy computation, we advocate the use of computationally simple probability distributions to describe the dynamics and interaction of the hazard events in our proposed network model. This enables a larger number of simulations of the model, ensuring greater accuracy of model forecasts. The modeling approach takes into account the dynamic and evolving nature of the temporal processes. By doing so, it may be possible to identify key elements of the system that are most vulnerable or critical, and thus develop strategies for mitigating risks, and examine restoration strategies in a dynamic hazard environment.
+## Project Structure
 
---
+The repository is organized into the following key directories and files:
 
-- **Authors**:
-  - Mark Bebbington*
-    - *Massey University, Palmerston North NZ*
-    - *Corresponding author: [m.bebbington@massey.ac.nz](mailto:m.bebbington@massey.ac.nz)*
-  - Alex Dunant
-    - *University of Durham, Durham UK*
-  - David Harte
-    - *Statistics Research Associates, Wellington NZ*
-  - Melody Whitehead
-    - *Massey University, Palmerston North NZ*
-  - Stuart Mead
-    - *Massey University, Palmerston North NZ*
-   
---
+```
+.
+├── engines/
+│   ├── __init__.py
+│   ├── ashfall.py
+│   ├── hydrology.py
+│   ├── hydrology_scs_cn.py
+│   ├── precip.py
+│   ├── rivernet.py
+│   └── visualize.py
+├── outputs/
+│   └── ... (simulation results)
+├── run_simulation_scscn.py
+├── simulate_case.py
+└── README.md
+```
 
-#### Scripts
+  - **`run_simulation_scscn.py`**: The main script for running simulations.
+  - **`simulate_case.py`**: A helper script that sets up and runs a single simulation case.
+  - **`engines/`**: A directory containing the core modeling components.
+  - **`outputs/`**: The directory where simulation results are saved.
 
-##### Main Simulation Script
+## Usage
 
-- [Main_sim.py](https://github.com/37stu37/rnc2_scripts/blob/main/scripts/Main_sim.py): This script is the main simulation script responsible for simulating the flow of water in a river catchment system. It includes functions for modeling catchment behavior and river flow.
+To run a set of simulations, you can execute the `run_simulation_scscn.py` script. This script allows you to define a range of parameter sets to be simulated. Each parameter set is defined as a dictionary within the `parameter_sets` list.
 
-##### River Flow Simulation Module
+```python
+# Example of a parameter set in run_simulation_scscn.py
+parameter_sets.append(dict(
+    tag               = f"CN70_V0.5_IA0.05_S0.2_R2500_M1.0_WE0.2_TC0.0005_AM10.0",
+    hydro_model       = "scscn",
+    curve_number      = 70,
+    channel_velocity_ms = 0.5,
+    # ... other parameters
+))
+```
 
-- [mod_river_flow.py](https://github.com/37stu37/rnc2_scripts/blob/main/scripts/mod_river_flow.py): This module contains functions for simulating the flow of water in a river network and visualizing the flow dynamics. It is used as part of the main simulation script.
+When you run the script, it will iterate through each parameter set, run the simulation, and save the results to a corresponding subdirectory within the `outputs` directory.
 
-##### Catchment Flow Simulation Module
+## Key Scripts and Engines
 
-- [mods_catchment_flow.py](https://github.com/37stu37/rnc2_scripts/blob/main/scripts/mods_catchment_flow.py): This module includes functions for generating daily rainfall amounts, simulating catchment reservoir flow, and managing the flow of water in catchment areas.
+### Main Scripts
 
---
+  - **`run_simulation_scscn.py`**: This is the main entry point for running simulations. It defines various parameter sets to test different scenarios and then calls `simulate_case.py` for each set.
+  - **`simulate_case.py`**: This script handles a single simulation case. It takes a configuration dictionary, loads or generates the necessary https://www.google.com/search?q=data (DEM, precipitation, ashfall), builds the river network, runs the selected hydrology model, and saves the results.
 
-#### Data
-The GIS input data required for the scripts are located in the [data](data) folder. This data includes geospatial information about catchments, river networks, and other relevant parameters necessary for the simulations.
+### Engines
 
-------
+The `engines` directory contains the core components of the model:
 
-### Publication 2: WIP 
+  - **`hydrology_scs_cn.py`**: Implements the SCS Curve Number model with a Unit Hydrograph for hourly hydrological routing. This includes calculations for runoff, infiltration, and the effects of ash on the curve number.
+  - **`hydrology.py`**: Contains the `run_nlrm_cascade` function which can run either the Non-Linear Reservoir Model (NLRM) or the SCS-CN model. It also includes the `DCascade` model for sediment transport in the river network.
+  - **`ashfall.py`**: Generates tephra (ash) thickness and distribution based on eruption parameters and a physical model.
+  - **`precip.py`**: Generates daily precipitation time series using a gamma distribution and seasonal adjustments.
+  - **`rivernet.py`**: Builds the river network and catchments from a Digital Elevation Model (DEM) using `pyflwdir`.
+  - **`visualize.py`**: Provides functions for creating plots and animations of the simulation results, including timeseries plots and network animations.
 
-- **Authors**:
-  - Author 1
-    - *Affiliation*
-  - Author 2
-    - *Affiliation*
-  - Author 3
-    - *Affiliation*
+## Data
 
+The GIS input https://www.google.com/search?q=data required for the scripts are located in the `data` folder (not included in this repository). This https://www.google.com/search?q=data includes geospatial information about catchments, river networks, and other relevant parameters necessary for the simulations. Specifically, the model requires a DEM, which can be provided as a GeoTIFF file. If a local DEM is not found, the `simulate_case.py` script can download one using `pygmt`.
+
+-----
