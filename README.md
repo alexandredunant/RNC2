@@ -69,7 +69,7 @@ When you run the script, it will iterate through each parameter set, run the sim
 ### Main Scripts
 
   - **`run_simulation_scscn.py`**: This is the main entry point for running simulations. It defines various parameter sets to test different scenarios and then calls `simulate_case.py` for each set.
-  - **`simulate_case.py`**: This script handles a single simulation case. It takes a configuration dictionary, loads or generates the necessary https://www.google.com/search?q=data (DEM, precipitation, ashfall), builds the river network, runs the selected hydrology model, and saves the results.
+  - **`simulate_case.py`**: This script handles a single simulation case. It takes a configuration dictionary, loads or generates the necessary data (DEM, precipitation, ashfall), builds the river network, runs the selected hydrology model, and saves the results.
 
 ### Engines
 
