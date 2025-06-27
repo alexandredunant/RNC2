@@ -1,6 +1,5 @@
 ### README.md
 
-```markdown
 ![RNC2 project](https://github.com/37stu37/rnc2_scripts/blob/main/project%20image.png)
 
 -----
@@ -106,7 +105,7 @@ If you use this code in your research, please cite it as follows:
 
 ```
 Author Name(s). (Year). rnc2_scripts: A Python framework for simulating volcanic ash impacts on river catchments. GitHub. Retrieved from [https://github.com/37stu37/rnc2_scripts](https://github.com/37stu37/rnc2_scripts)
-```
+
 
 Replace `Author Name(s)` and `Year` with the appropriate information.
 
