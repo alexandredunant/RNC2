@@ -1,3 +1,6 @@
+### README.md
+
+```markdown
 ![RNC2 project](https://github.com/37stu37/rnc2_scripts/blob/main/project%20image.png)
 
 -----
@@ -8,12 +11,13 @@
 
 ## Table of Contents
 
-  - [Overview](https://www.google.com/search?q=%23overview)
-  - [Project Structure](https://www.google.com/search?q=%23project-structure)
-  - [Usage](https://www.google.com/search?q=%23usage)
-  - [Key Scripts and Engines](https://www.google.com/search?q=%23key-scripts-and-engines)
-  - [Data](https://www.google.com/search?q=%23data)
-  - [Publications](https://www.google.com/search?q=%23publications)
+- [Overview](#overview)
+- [Project Structure](#project-structure)
+- [Usage](#usage)
+- [Key Scripts and Engines](#key-scripts-and-engines)
+- [Data](#data)
+- [Publications](#publications)
+- [Citation](#citation)
 
 -----
 
@@ -26,49 +30,55 @@ This repository contains a set of Python scripts for simulating the hydrological
 The repository is organized into the following key directories and files:
 
 ```
+
 .
 ├── engines/
-│   ├── __init__.py
+│   ├── **init**.py
 │   ├── ashfall.py
 │   ├── hydrology.py
-│   ├── hydrology_scs_cn.py
+│   ├── hydrology\_scs\_cn.py
 │   ├── precip.py
 │   ├── rivernet.py
 │   └── visualize.py
 ├── outputs/
 │   └── ... (simulation results)
-├── run_simulation_scscn.py
-├── simulate_case.py
+├── run\_simulation.py
+├── run\_simulation\_comparison.py
+├── simulate\_case.py
 └── README.md
-```
 
-  - **`run_simulation_scscn.py`**: The main script for running simulations.
-  - **`simulate_case.py`**: A helper script that sets up and runs a single simulation case.
-  - **`engines/`**: A directory containing the core modeling components.
-  - **`outputs/`**: The directory where simulation results are saved.
+````
+
+- **`run_simulation.py`**: The main script for running a single simulation with a defined set of parameters.
+- **`run_simulation_comparison.py`**: A script to run and compare two scenarios, such as with and without ashfall.
+- **`simulate_case.py`**: A helper script that sets up and runs a single simulation case.
+- **`engines/`**: A directory containing the core modeling components.
+- **`outputs/`**: The directory where simulation results are saved.
 
 ## Usage
 
-To run a set of simulations, you can execute the `run_simulation_scscn.py` script. This script allows you to define a range of parameter sets to be simulated. Each parameter set is defined as a dictionary within the `parameter_sets` list.
+To run a set of simulations, you can execute the `run_simulation.py` script. This script allows you to define a parameter set to be simulated. The parameter set is defined as a dictionary.
 
 ```python
-# Example of a parameter set in run_simulation_scscn.py
-parameter_sets.append(dict(
-    tag               = f"CN70_V0.5_IA0.05_S0.2_R2500_M1.0_WE0.2_TC0.0005_AM10.0",
+# Example of a parameter set in run_simulation.py
+cfg = dict(
+    tag               = "TEST_180_eruption_new_hydo_20year",
     hydro_model       = "scscn",
     curve_number      = 70,
-    channel_velocity_ms = 0.5,
     # ... other parameters
-))
-```
+)
+````
 
-When you run the script, it will iterate through each parameter set, run the simulation, and save the results to a corresponding subdirectory within the `outputs` directory.
+When you run the script, it will execute the simulation and save the results to a corresponding subdirectory within the `outputs` directory.
+
+To compare two different scenarios, you can use the `run_simulation_comparison.py` script, which runs two simulations back-to-back and generates comparative plots.
 
 ## Key Scripts and Engines
 
 ### Main Scripts
 
-  - **`run_simulation_scscn.py`**: This is the main entry point for running simulations. It defines various parameter sets to test different scenarios and then calls `simulate_case.py` for each set.
+  - **`run_simulation.py`**: This is the main entry point for running a single simulation. It defines a parameter set to test a specific scenario and then calls `simulate_case.py`.
+  - **`run_simulation_comparison.py`**: This script is designed to compare two different scenarios, for example, with and without an ashfall event. It defines two separate configurations and runs them sequentially, generating a suite of comparative plots.
   - **`simulate_case.py`**: This script handles a single simulation case. It takes a configuration dictionary, loads or generates the necessary data (DEM, precipitation, ashfall), builds the river network, runs the selected hydrology model, and saves the results.
 
 ### Engines
@@ -76,7 +86,7 @@ When you run the script, it will iterate through each parameter set, run the sim
 The `engines` directory contains the core components of the model:
 
   - **`hydrology_scs_cn.py`**: Implements the SCS Curve Number model with a Unit Hydrograph for hourly hydrological routing. This includes calculations for runoff, infiltration, and the effects of ash on the curve number.
-  - **`hydrology.py`**: Contains the `run_nlrm_cascade` function which can run either the Non-Linear Reservoir Model (NLRM) or the SCS-CN model. It also includes a 'Cascade` model for sediment transport in the river network.
+  - **`hydrology.py`**: Contains the `run_nlrm_cascade` function which can run either the Non-Linear Reservoir Model (NLRM) or the SCS-CN model. It also includes a 'Cascade\` model for sediment transport in the river network.
   - **`ashfall.py`**: Generates tephra (ash) thickness and distribution based on eruption parameters and a physical model.
   - **`precip.py`**: Generates daily precipitation time series using a gamma distribution and seasonal adjustments.
   - **`rivernet.py`**: Builds the river network and catchments from a Digital Elevation Model (DEM) using `pyflwdir`.
@@ -86,4 +96,19 @@ The `engines` directory contains the core components of the model:
 
 The GIS input data required for the scripts are located in the `data` folder (not included in this repository). Specifically, the model requires a DEM, which can be provided as a GeoTIFF file. If a local DEM is not found, the `simulate_case.py` script can download one using `pygmt`.
 
------
+## Publications
+
+*This is a placeholder for any publications that have resulted from this work. You can add links to papers, conference presentations, or other relevant materials here.*
+
+## Citation
+
+If you use this code in your research, please cite it as follows:
+
+```
+Author Name(s). (Year). rnc2_scripts: A Python framework for simulating volcanic ash impacts on river catchments. GitHub. Retrieved from [https://github.com/37stu37/rnc2_scripts](https://github.com/37stu37/rnc2_scripts)
+```
+
+Replace `Author Name(s)` and `Year` with the appropriate information.
+
+```
+```
