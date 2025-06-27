@@ -24,7 +24,8 @@ class SCSCN_UH_Model:
         slope: float = 0.01,
         initial_abstraction_ratio: float = 0.2,
         channel_velocity_ms: float = 1.0,
-        ash_cn_multiplier: float = 1.0
+        max_cn_increase: float = 25.0,
+        k_ash: float = 0.5
     ):
         self.area_km2 = area_km2
         self.area_m2 = area_km2 * 1e6
@@ -33,7 +34,8 @@ class SCSCN_UH_Model:
         self.slope = max(slope, 0.001)
         self.ia_ratio = initial_abstraction_ratio
         self.channel_velocity_ms = channel_velocity_ms
-        self.ash_cn_multiplier = ash_cn_multiplier
+        self.max_cn_increase = max_cn_increase
+        self.k_ash = k_ash
 
         # SCS-CN parameters
         self.S_inch = (1000 / cn) - 10
@@ -42,12 +44,6 @@ class SCSCN_UH_Model:
 
         # Time of concentration (Giandotti formula)
         self.tc_hours = (4 * np.sqrt(area_km2) + 1.5 * length_km) / (0.8 * np.sqrt(self.slope * 1000))
-
-        # Channel travel time
-        self.channel_lag_hours = (length_km * 1000) / (channel_velocity_ms * 3600)
-
-        # Total lag
-        self.total_lag_hours = self.tc_hours + self.channel_lag_hours
 
         # Unit Hydrograph parameters (triangular)
         self.tp_hours = 0.6 * self.tc_hours
@@ -58,8 +54,6 @@ class SCSCN_UH_Model:
 
         self.cumulative_precip_mm = 0.0
         self.cumulative_runoff_mm = 0.0
-
-        self.surface_flow_ratio = 0.0
 
     def _build_unit_hydrograph(self, dt_hours: float = 1.0) -> np.ndarray:
         """Build triangular unit hydrograph discretized at dt_hours intervals."""
@@ -72,47 +66,48 @@ class SCSCN_UH_Model:
                 uh[i] = (t / self.tp_hours) * self.qp_per_mm
             elif t <= self.tb_hours:
                 uh[i] = self.qp_per_mm * (self.tb_hours - t) / (self.tb_hours - self.tp_hours)
-            else:
-                uh[i] = 0.0
-
         return uh
 
     def _infiltration_reduction_ash(self, ash_depth_m: float) -> float:
-        """Ash reduces infiltration - increase CN."""
-        # Apply the multiplier to make the effect stronger at shallow depths
+        """Calculates the effective Curve Number based on ash depth."""
         ash_depth_mm = ash_depth_m * 1000
-        cn_increase = min(5, ash_depth_mm * self.ash_cn_multiplier)
-        return min(98, self.cn + cn_increase)
+        cn_increase = self.max_cn_increase * (1 - np.exp(-self.k_ash * ash_depth_mm))
+        effective_cn = min(98, self.cn + cn_increase)
+        return effective_cn
 
     def compute_runoff_and_components(self, precip_mm: float, ash_depth_m: float = 0.0) -> Dict[str, float]:
-        """Compute runoff using SCS-CN method."""
+        """Compute runoff using SCS-CN method for a single timestep."""
         cn_effective = self._infiltration_reduction_ash(ash_depth_m)
-        S_mm = (1000 / cn_effective - 10) * 25.4
-        Ia_mm = self.ia_ratio * S_mm
+        S_mm_effective = (1000 / cn_effective - 10) * 25.4
+        Ia_mm_effective = self.ia_ratio * S_mm_effective
 
+        # Use event-based cumulative precipitation for runoff calculation
         self.cumulative_precip_mm += precip_mm
 
-        if self.cumulative_precip_mm <= Ia_mm:
-            runoff_mm = 0.0
+        if self.cumulative_precip_mm <= Ia_mm_effective:
+            runoff_mm_total = 0.0
         else:
-            excess = self.cumulative_precip_mm - Ia_mm
-            runoff_mm = (excess ** 2) / (excess + S_mm)
+            excess = self.cumulative_precip_mm - Ia_mm_effective
+            runoff_mm_total = (excess ** 2) / (excess + S_mm_effective)
 
-        incremental_runoff = runoff_mm - self.cumulative_runoff_mm
-        self.cumulative_runoff_mm = runoff_mm
+        # Calculate the runoff generated in this specific step
+        incremental_runoff = runoff_mm_total - self.cumulative_runoff_mm
+        self.cumulative_runoff_mm = runoff_mm_total
 
-        base_surface_ratio = 0.3
-        ash_enhancement = min(0.6, ash_depth_m * 1000)
-        self.surface_flow_ratio = min(0.9, base_surface_ratio + ash_enhancement)
+        # Reset for next event if no rain
+        if precip_mm == 0:
+            self.cumulative_precip_mm = 0.0
+            self.cumulative_runoff_mm = 0.0
 
-        return {
-            'runoff_mm': max(0.0, incremental_runoff),
-            'surface_flow_ratio': self.surface_flow_ratio
-        }
+        return {'runoff_mm': max(0.0, incremental_runoff)}
+
 
 class CatchmentSCSCN:
     """Manages SCS-CN models for all catchments."""
-    def __init__(self, catchment_df: pd.DataFrame, default_cn: float = 70.0, initial_abstraction_ratio: float = 0.2, ash_cn_multiplier: float = 1.0):
+    def __init__(self, catchment_df: pd.DataFrame, default_cn: float = 70.0, 
+                 initial_abstraction_ratio: float = 0.2, 
+                 max_cn_increase: float = 25.0, 
+                 k_ash: float = 0.5):
         self.catchments: Dict[int, SCSCN_UH_Model] = {}
         self.ash_depths: Dict[int, float] = {}
 
@@ -127,7 +122,8 @@ class CatchmentSCSCN:
             self.catchments[cid] = SCSCN_UH_Model(
                 area_km2=area_km2, cn=cn, length_km=length_km, slope=slope,
                 channel_velocity_ms=velocity, initial_abstraction_ratio=ia_ratio,
-                ash_cn_multiplier=ash_cn_multiplier
+                max_cn_increase=max_cn_increase,
+                k_ash=k_ash
             )
             self.ash_depths[cid] = 0.0
 
@@ -136,44 +132,56 @@ class CatchmentSCSCN:
         for cid in self.ash_depths:
             self.ash_depths[cid] += ash_increment_m
 
-    def compute_ash_wash(self, cid: int, driving_discharge_m3s: float, rho_ash: float = 1000.0, wash_efficiency: float = 0.01) -> float:
-        """Compute ash wash from a catchment based on surface flow component and a driving discharge."""
+    def compute_ash_wash(self, cid: int, incremental_runoff_mm: float, rho_ash: float = 1000.0, wash_efficiency: float = 0.01) -> float:
+        """
+        MODIFIED: Compute ash wash based on the incremental runoff from the hillslope.
+        Erosion is now proportional to the volume of water running off in the current step.
+        """
         model = self.catchments.get(cid)
-        if not model:
+        if not model or incremental_runoff_mm <= 0:
             return 0.0
 
         ash_depth_m = self.ash_depths.get(cid, 0.0)
-
-        if ash_depth_m <= 0 or driving_discharge_m3s <= 0:
+        if ash_depth_m <= 0:
             return 0.0
 
-        M_avail = rho_ash * model.area_m2 * ash_depth_m
-        surface_flow_ratio = model.surface_flow_ratio
+        # Available ash mass in kg
+        M_avail_kg = rho_ash * model.area_m2 * ash_depth_m
+        
+        # Simple erosion model: mass washed is proportional to runoff depth and efficiency.
+        # We normalize by a reference runoff depth (e.g., 10mm) to keep wash_efficiency dimensionless.
+        reference_runoff_depth_mm = 10.0
+        fraction_to_wash = wash_efficiency * (incremental_runoff_mm / reference_runoff_depth_mm)
 
-        potential_wash = surface_flow_ratio * M_avail * wash_efficiency
-        M_wash = min(M_avail, potential_wash)
+        M_wash_kg = M_avail_kg * fraction_to_wash
+        M_wash_kg = min(M_avail_kg, M_wash_kg) # Cannot wash more than is available
 
-        if M_avail > 0:
-            fraction_removed = M_wash / M_avail
+        if M_avail_kg > 0:
+            fraction_removed = M_wash_kg / M_avail_kg
             self.ash_depths[cid] *= (1 - fraction_removed)
 
-        return M_wash
+        return M_wash_kg
 
-    def update(self, precipitation_mm: float, hour_of_day: int = 0) -> Dict[int, np.ndarray]:
-        """Update all catchments for one timestep."""
+    def update(self, precipitation_mm: float) -> tuple[Dict[int, np.ndarray], Dict[int, float]]:
+        """
+        Update all catchments for one timestep.
+        MODIFIED: Now returns both the discharge series and the incremental runoff depths.
+        """
         discharge_series = {}
+        runoff_results = {}
 
         for cid, model in self.catchments.items():
             ash_m = self.ash_depths.get(cid, 0.0)
             result = model.compute_runoff_and_components(precipitation_mm, ash_m)
             runoff_mm = result['runoff_mm']
+            runoff_results[cid] = runoff_mm
 
             if runoff_mm > 0:
                 discharge_series[cid] = runoff_mm * model.uh
             else:
                 discharge_series[cid] = np.zeros_like(model.uh)
 
-        return discharge_series
+        return discharge_series, runoff_results
 
 # ──────────────── 2) D-Cascade Sediment Transport Classes ────────────────
 
@@ -188,7 +196,7 @@ class Reach:
         manning_n: float,
         width: float,
         storage: float = 0.0,
-        transport_coefficient: float = 1e-5 # Add parameter
+        transport_coefficient: float = 1e-5
     ):
         if length <= 0 or slope <= 0 or manning_n <= 0 or width <= 0:
             raise ValueError("Physical parameters must be positive")
@@ -201,7 +209,7 @@ class Reach:
         self.storage = {'ash': storage}
         self.discharge = 0.0
         self.metadata = {}
-        self.transport_coefficient = transport_coefficient # Store the parameter
+        self.transport_coefficient = transport_coefficient
 
     def add_sediment_mass(self, sediment_type: str, mass_kg: float) -> None:
         self.storage[sediment_type] = self.storage.get(sediment_type, 0.0) + mass_kg
@@ -213,8 +221,6 @@ class Reach:
         ρ, g = 1000.0, 9.81
         R = self.compute_hydraulic_radius()
         shear = ρ * g * R * self.slope
-
-        # Use the stored parameter instead of a hardcoded value
         return (shear**1.5) * self.width * self.length * self.transport_coefficient
 
     def step(self, incoming_flux_kg: float, dt: float = 1.0) -> float:
@@ -253,7 +259,7 @@ class DCascade:
         return exports
 
 
-def build_network(edges: gpd.GeoDataFrame, transport_coefficient: float = 1e-5) -> DCascade: # Add parameter
+def build_network(edges: gpd.GeoDataFrame, transport_coefficient: float = 1e-5) -> DCascade:
     reaches: Dict[int, Reach] = {}
     for _, row in edges.iterrows():
         rid, ds = int(row['reach_id']), row['downstream_id']
@@ -265,7 +271,7 @@ def build_network(edges: gpd.GeoDataFrame, transport_coefficient: float = 1e-5) 
             manning_n=float(row['manning_n']),
             width=float(row['width']),
             storage=float(row.get('initial_storage_ash_kg', 0.0)),
-            transport_coefficient=transport_coefficient # Pass parameter to Reach
+            transport_coefficient=transport_coefficient
         )
         reaches[rid].metadata['A_sub'] = row['A_sub']
     return DCascade(reaches)
@@ -318,10 +324,7 @@ class NetworkRouterWithSediment:
                     future_idx = (current_step + self.reach_lags[rid]) % self.buffer_size
                     self.discharge_buffers[ds_rid][future_idx] += q_current
 
-        # Capture the sediment exports from the step
         sediment_exports = self.sediment_model.step(dt=self.dt_hours * 3600)
-
-        # Return both discharge and sediment flux
         return {'discharge': current_discharge, 'sediment_flux': sediment_exports}
 
     def get_sediment_state(self) -> Dict[int, float]:
@@ -344,7 +347,10 @@ def run_scscn_uh_cascade(
     edges_gdf: gpd.GeoDataFrame, catch_df: pd.DataFrame, precip_df: pd.DataFrame, ash_df: pd.DataFrame,
     default_cn: float = 70.0, channel_velocity_ms: float = 1.0, initial_abstraction_ratio: float = 0.2,
     dt_hours: float = 1.0, rho_ash: float = 1000.0, wash_efficiency: float = 0.01,
-    transport_coefficient: float = 1e-5, ash_cn_multiplier: float = 1.0
+    transport_coefficient: float = 1e-5, ash_cn_multiplier: float = 1.0,
+    max_cn_increase: float = 25.0,
+    k_ash: float = 0.5,
+    **kwargs
 ) -> Dict[str, Any]:
 
     if 'channel_velocity_ms' not in edges_gdf.columns: edges_gdf['channel_velocity_ms'] = channel_velocity_ms
@@ -356,16 +362,13 @@ def run_scscn_uh_cascade(
 
     scscn = CatchmentSCSCN(catch_df, default_cn=default_cn, 
                            initial_abstraction_ratio=initial_abstraction_ratio,
-                           ash_cn_multiplier=ash_cn_multiplier)
+                           max_cn_increase=max_cn_increase,
+                           k_ash=k_ash)
     router = NetworkRouterWithSediment(edges_gdf, dt_hours=dt_hours, 
                                        transport_coefficient=transport_coefficient)
     catch_to_reach = edges_gdf.groupby('catchment_id')['reach_id'].first().to_dict()
 
-    # --- Initialize lists for diagnostic data ---
-    discharge_ts, network_snapshots = [], []
-    hillslope_ash_depth_ts = []
-    cumulative_ash_wash_ts = []
-    ash_discharge_ts = [] # NEW: for ash discharge
+    discharge_ts, network_snapshots, hillslope_ash_depth_ts, cumulative_ash_wash_ts, ash_discharge_ts = [], [], [], [], []
     cumulative_wash_mass = 0.0
 
     print(f"Running {len(hourly_df)} hourly timesteps with sediment transport...")
@@ -373,29 +376,28 @@ def run_scscn_uh_cascade(
         ash_m = row['ash_mm_mean'] / 1000.0
         scscn.update_ash(ash_m)
 
-        discharge_series = scscn.update(precipitation_mm=row['precip_mm'], hour_of_day=row['hour'])
+        # MODIFICATION: Get both discharge hydrographs and the incremental runoff depths
+        discharge_series, incremental_runoff = scscn.update(precipitation_mm=row['precip_mm'])
 
         for cid, q_series in discharge_series.items():
             if cid in catch_to_reach:
                 router.add_lateral_inflow(catch_to_reach[cid], q_series, step)
 
-        # Route water and sediment for the current step
+        # MODIFICATION: Drive ash wash with the calculated incremental runoff for each catchment
+        total_ash_washed_this_step = 0
+        for cid, runoff_mm in incremental_runoff.items():
+            if runoff_mm > 0 and cid in catch_to_reach:
+                rid = catch_to_reach[cid]
+                ash_mass = scscn.compute_ash_wash(cid, runoff_mm, rho_ash, wash_efficiency=wash_efficiency)
+                if ash_mass > 0:
+                    router.add_sediment_input(rid, ash_mass)
+                    total_ash_washed_this_step += ash_mass
+
         routing_results = router.route_step(step)
         current_reach_discharge = routing_results['discharge']
-        sediment_exports = routing_results['sediment_flux'] # Get sediment flux
+        sediment_exports = routing_results['sediment_flux']
 
-        total_ash_washed_this_step = 0
-        for cid, model in scscn.catchments.items():
-            if cid in catch_to_reach:
-                rid = catch_to_reach[cid]
-                driving_q = current_reach_discharge.get(rid, 0)
-                if driving_q > 0:
-                    ash_mass = scscn.compute_ash_wash(cid, driving_q, rho_ash, wash_efficiency=wash_efficiency)
-                    if ash_mass > 0:
-                        router.add_sediment_input(rid, ash_mass)
-                        total_ash_washed_this_step += ash_mass
-
-        # --- Record diagnostic data at each step ---
+        # --- Record diagnostic data ---
         mean_hillslope_depth_mm = np.mean(list(scscn.ash_depths.values())) * 1000.0
         hillslope_ash_depth_ts.append({'datetime': row['datetime'], 'mean_ash_depth_mm': mean_hillslope_depth_mm})
 
@@ -406,28 +408,22 @@ def run_scscn_uh_cascade(
         outlet_q = sum(current_reach_discharge.get(r, 0) for r in outlet_reaches) if outlet_reaches else sum(current_reach_discharge.values())
         discharge_ts.append({'datetime': row['datetime'], 'discharge_m3s': outlet_q})
 
-        # NEW: Calculate and record ash discharge at the outlet
         outlet_ash_flux_kg_per_hour = sum(sediment_exports.get(r, 0.0) for r in outlet_reaches)
         ash_discharge_ts.append({'datetime': row['datetime'], 'ash_flux_kg_s': outlet_ash_flux_kg_per_hour / 3600.0})
 
-
         if step % 24 == 0:
             sediment_state = router.get_sediment_state()
-
-            # Get the reach IDs in a list to ensure consistent ordering
             reach_ids = list(current_reach_discharge.keys())
-
             snapshot_data = {
                 'reach_id': list(current_reach_discharge.keys()),
                 'discharge_m3s': list(current_reach_discharge.values()),
                 'ash_storage': [sediment_state.get(rid, 0) for rid in current_reach_discharge.keys()],
-                'ash_flow_kgs': [sediment_exports.get(rid, 0) / 3600.0 for rid in reach_ids], # converting from kg/hour to kg/s
+                'ash_flow_kgs': [sediment_exports.get(rid, 0) / 3600.0 for rid in reach_ids],
                 'time_step': step, 
                 'datetime': row['datetime']
             }
             network_snapshots.append(pd.DataFrame(snapshot_data))
 
-    # --- Add diagnostic timeseries to the results dictionary ---
     return {
         'discharge_ts': pd.DataFrame(discharge_ts),
         'network_snapshots': network_snapshots,
@@ -437,5 +433,5 @@ def run_scscn_uh_cascade(
         'sediment_model': router.sediment_model,
         'hillslope_ash_depth_ts': pd.DataFrame(hillslope_ash_depth_ts),
         'cumulative_ash_wash_ts': pd.DataFrame(cumulative_ash_wash_ts),
-        'ash_discharge_ts': pd.DataFrame(ash_discharge_ts) # NEW: Add to results
+        'ash_discharge_ts': pd.DataFrame(ash_discharge_ts)
     }

@@ -10,6 +10,7 @@ from rasterio import features
 from rasterio.transform import from_origin
 from affine import Affine
 import networkx as nx
+from pathlib import Path
 
 def vectorize(data, nodata, transform, crs, name="value"):
     """
@@ -169,7 +170,8 @@ def clean_river_network(river_network_gdf):
 def extract_network_from_dem(
     dem_path: str,
     min_stream_order: int = 7,
-    clean_network: bool = True
+    clean_network: bool = True,
+    output_dir: Path = Path(".")
 ):
     """
     1) Reads DEM from dem_path
@@ -294,7 +296,7 @@ def extract_network_from_dem(
         transform=transform,
         ax=ax1,
         cmap="terrain",
-        title="DEM (with CRS)")
+        title="DEM")
 
     # Slope in its native CRS
     rasterio.plot.show(slope,
@@ -318,7 +320,9 @@ def extract_network_from_dem(
         # ax.set_axis_off()
 
     plt.tight_layout()
-    plt.savefig("./DEM_river_visual_check.png", dpi=300)
+    output_path = output_dir / "DEM_river_visual_check.png"
+    plt.savefig(output_path, dpi=300)
+    print(f"Saved DEM visualization to: {output_path}")
     plt.close()
     # ------------------------------
 
@@ -337,9 +341,10 @@ def extract_network_from_dem(
 def build_from_dem(
     dem_path: str,
     min_stream_order: int = 7,
-    clean_network: bool = True
+    clean_network: bool = True,
+    output_dir: Path = Path(".")
 ):
     """
     Convenience wrapper matching the engine API.
     """
-    return extract_network_from_dem(dem_path, min_stream_order, clean_network)
+    return extract_network_from_dem(dem_path, min_stream_order, clean_network, output_dir)

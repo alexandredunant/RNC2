@@ -296,7 +296,9 @@ def run_nlrm_cascade(
     model_type: str = "nlrm",  # New parameter to select model type
     wash_efficiency: float = 0.01,
     transport_coefficient: float = 1e-5,
-    ash_cn_multiplier: float = 1.0
+    max_cn_increase: float = 25.0,
+    k_ash: float = 0.5
+    # ash_cn_multiplier: float = 1.0
 ) -> Dict[str, Any]:
     """
     Run hydrology + sediment cascade model.
@@ -319,7 +321,9 @@ def run_nlrm_cascade(
             rho_ash=rho_ash,
             wash_efficiency=wash_efficiency,
             transport_coefficient=transport_coefficient,
-            ash_cn_multiplier=ash_cn_multiplier
+            max_cn_increase=max_cn_increase,
+            k_ash=k_ash
+            # ash_cn_multiplier=ash_cn_multiplier
         )
 
     # Otherwise use the original NLRM model (daily)

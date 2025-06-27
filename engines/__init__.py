@@ -5,7 +5,7 @@ from .ashfall     import generate as generate_ashfall
 from .ashfall import load_dem_from_pygmt, save_dem_to_file, load_dem_from_file
 from .rivernet    import build_from_dem
 from .hydrology   import run_nlrm_cascade
-from .visualize   import timeseries, network_animation
+from .visualize   import network_animation, plot_stock_flow, plot_precip_discharge_relationship
 
 # Optional: also export the SCS-CN specific function if needed
 try:

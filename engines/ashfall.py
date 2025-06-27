@@ -51,7 +51,9 @@ def load_dem_from_pygmt(region, resolution="01s"):
         grid = pygmt.datasets.load_earth_relief(resolution=resolution, region=region)
         data, transform, crs = grid.data, from_origin(grid.coords["lon"].min(), grid.coords["lat"].max(), grid.coords["lon"][1] - grid.coords["lon"][0], grid.coords["lat"][0] - grid.coords["lat"][1]), "EPSG:4326"
         return data, transform, crs
-    except ImportError: return None, None, None
+    except ImportError: 
+        return None, None, None
+
 
 def load_dem_from_file(dem_path):
     with rasterio.open(dem_path) as src:
@@ -59,10 +61,12 @@ def load_dem_from_file(dem_path):
         if src.nodata is not None: elev[elev == src.nodata] = np.nan
         return elev, transform, crs
 
+
 def save_dem_to_file(data, transform, crs, output_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with rasterio.open(output_path, "w", driver="GTiff", height=data.shape[0], width=data.shape[1], count=1, dtype=data.dtype, crs=crs, transform=transform) as dst:
         dst.write(data, 1)
+
 
 # ──────────────── Public API (updated to use config parameters) ────────────────
 def generate(
@@ -81,10 +85,19 @@ def generate(
     gamma0: float,
     eta0: float,
     **kwargs # to absorb other unused parameters
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, list]:
     """
     Generate tephra (ash) time series based on model parameters passed from the config.
     """
+    # --- FIX: Handle the "No Ash" scenario gracefully ---
+    # If M0 is not positive, it means no eruption should occur.
+    if M0 <= 0:
+        print("M0 <= 0, generating no ashfall for this scenario.")
+        dates = pd.date_range("2010-01-01", periods=num_days)
+        # Return a dataframe with zero ash and an empty list of eruption days.
+        df = pd.DataFrame({"date": dates, "ash_mm_mean": np.zeros(num_days)})
+        return df, []
+
     rng = np.random.default_rng(seed)
 
     # --- Use config parameters instead of hardcoded values ---
@@ -100,13 +113,23 @@ def generate(
     print(f"Generating ashfall with dynamic params: GAMMA={GAMMA:.2f}, PHI={PHI_DEGREES:.1f}, ALPHA={ALPHA:.3f}")
 
     # Eruption timing model
-    eruption_days = [20, 30, 200]
-    shape_b, scale_a = 0.213, 39.8
-    while True:
-        delta = scale_a * rng.weibull(shape_b)
-        next_day = eruption_days[-1] + np.ceil(delta)
-        if next_day >= num_days: break
-        eruption_days.append(int(next_day))
+    # Check if an explicit list of eruption days was provided
+    if 'eruption_days' in kwargs and kwargs['eruption_days'] is not None:
+        eruption_days = kwargs['eruption_days']
+        print(f"Using explicit eruption days: {eruption_days}")
+    else:
+        # Otherwise, generate them using the Weibull distribution
+        print("Generating eruption days stochastically (Weibull distribution)...")
+        eruption_days = [20]  # Start with an initial eruption
+        shape_b, scale_a = 0.213, 39.8
+        while True:
+            delta = scale_a * rng.weibull(shape_b)
+            next_day = eruption_days[-1] + np.ceil(delta)
+            if next_day >= num_days:
+                break
+            eruption_days.append(int(next_day))
+        print(f"Generated eruption days: {eruption_days}")
+
     timeline = generate_timeline(num_days, eruption_days)
 
     # Precompute grid coordinates, distance, and azimuth
@@ -141,4 +164,4 @@ def generate(
     dates = pd.date_range("2010-01-01", periods=num_days)
     df = pd.DataFrame({"date": dates, "ash_mm_mean": ash_mean})
 
-    return df
+    return df, eruption_days

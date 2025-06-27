@@ -8,20 +8,14 @@ import numpy as np
 from engines import (
     generate_precip,
     generate_ashfall,
-    load_dem_from_pygmt,
-    save_dem_to_file,
     load_dem_from_file,
     build_from_dem,
     run_nlrm_cascade,
-    timeseries,
-    network_animation,
 )
-
-from engines.visualize import plot_stock_flow
 
 def simulate_case(cfg: dict):
     """
-    ... (omitting docstring for brevity) ...
+    Runs a single simulation case based on the provided configuration.
     """
     # Create output directory
     out_dir = Path("outputs") / cfg.get("tag", "unnamed")
@@ -29,54 +23,29 @@ def simulate_case(cfg: dict):
 
     # --- DEM handling ---
     dem_path = cfg.get("dem_path")
-    if dem_path and Path(dem_path).exists():
-        dem, transform, crs = load_dem_from_file(dem_path)
-    else:
-        # Assumes PyGMT is the alternative if dem_path is None or not found
-        dem, transform, crs = load_dem_from_pygmt(cfg["region"], cfg["resolution"])
-        if dem is None:
-            raise RuntimeError("Failed to load DEM. Provide a valid dem_path or install PyGMT.")
-        # Save the downloaded DEM for future use
-        save_dem_to_file(dem, transform, crs, dem_path)
+    dem, transform, crs = load_dem_from_file(dem_path)
     print(f"Using DEM: {dem_path}")
 
-
     # --- Build hydrology network from DEM ---
-    network, basins = build_from_dem(dem_path=dem_path, min_stream_order=cfg["min_stream_order"], clean_network=cfg["clean_net"])
-    
-    # --- FIX STARTS HERE ---
-
-    # --- Generate precipitation time series ---
-    # Pass only the arguments required by generate_precip
-    precip_df = generate_precip(
-        num_days=cfg["num_days"],
-        mean_annual_precip=cfg["mean_annual_precip"],
-        rain_prob=cfg["rain_prob"],
-        season_strength=cfg["season_strength"],
-        precip_sigma=cfg["precip_sigma"],
-        seed=cfg["seed"]
+    # Pass the 'out_dir' variable to the function call to save the plot correctly
+    network, basins = build_from_dem(
+        dem_path=dem_path, 
+        min_stream_order=cfg["min_stream_order"], 
+        clean_network=cfg["clean_net"],
+        output_dir=out_dir
     )
     
+    # --- Generate precipitation time series ---
+    precip_df = generate_precip(**cfg)
+    
     # --- Generate ashfall time series ---
-    # Pass only the arguments required by generate_ashfall
-    ash_df = generate_ashfall(
-        # Explicitly passed arguments
+    # Correctly unpack the two return values from generate_ashfall
+    ash_df, eruption_days_used = generate_ashfall(
         dem=dem,
         transform=transform,
         crs=crs,
-        # Arguments from the config dictionary
-        num_days=cfg["num_days"],
-        M0=cfg["M0"],
-        wind_mu=cfg["wind_mu"],
-        wind_sigma=cfg["wind_sigma"],
-        gamma0=cfg["gamma0"],
-        eta0=cfg["eta0"],
-        seed=cfg["seed"],
-        # Handle the key name mismatch: cfg['x_volcano'] -> func(volcano_x=...)
-        volcano_x=cfg["x_volcano"],
-        volcano_y=cfg["y_volcano"]
+        **cfg
     )
-    # --- FIX ENDS HERE ---
 
     # --- Select and configure hydrology model ---
     hydro_model = cfg.get("hydro_model", "nlrm")
@@ -91,7 +60,10 @@ def simulate_case(cfg: dict):
     else:
         print("Using Non-Linear Reservoir Model (daily timesteps)")
 
+    print(f"DEBUG: Type of ash_df is {type(ash_df)}")
+
     # --- Run hydrology model ---
+    # Use the explicit, correct list of arguments for this function
     result = run_nlrm_cascade(
         edges_gdf=network,
         catch_df=basins,
@@ -103,20 +75,26 @@ def simulate_case(cfg: dict):
         evapotranspiration=cfg.get("evapotranspiration", 2.5),
         rho_ash=cfg.get("rho_ash", 1000.0),
         model_type=hydro_model,
-        wash_efficiency=cfg.get("wash_efficiency", 0.01), # Default to 0.01
+        wash_efficiency=cfg.get("wash_efficiency", 0.01),
         transport_coefficient=cfg.get("transport_coefficient", 1e-5),
-        ash_cn_multiplier=cfg.get("ash_cn_multiplier", 1.0)
+        max_cn_increase=cfg.get("max_cn_increase", 25.0),
+        k_ash=cfg.get("k_ash", 0.5)
     )
 
-    # --- Export outputs ---
-    # timeseries(precip_df, ash_df, result, out_dir / "timeseries.png")
-    network_animation(result, out_dir / "network_animation.mp4")
-    plot_stock_flow(precip_df, result, out_dir / "stock_flow_relationship.png", tag=cfg.get("tag"))
+    # Add the used eruption days to the results for plotting
+    result['eruption_days'] = eruption_days_used
 
     # --- Save configuration ---
     with open(out_dir / "config.json", "w") as f:
-        # Make cfg serializable if it contains numpy arrays or other complex types
-        serializable_cfg = {k: v.tolist() if isinstance(v, np.ndarray) else v for k, v in cfg.items()}
+        # Make cfg serializable to save it as JSON
+        serializable_cfg = {}
+        for k, v in cfg.items():
+            if isinstance(v, np.ndarray):
+                serializable_cfg[k] = v.tolist()
+            elif isinstance(v, (Path,)):
+                serializable_cfg[k] = str(v)
+            else:
+                serializable_cfg[k] = v
         json.dump(serializable_cfg, f, indent=2)
 
-    return result
+    return result, precip_df
