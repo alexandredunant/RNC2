@@ -1,0 +1,31 @@
+{
+  "tag": "RUN_FROM_LOCAL_TIF_NZ",
+  "dem_path": "./data/RangitaikiTarawera_25m.tif",
+  "hydro_model": "scscn",
+  "num_days": 365,
+  "seed": 42,
+  "min_stream_order": 8,
+  "clean_net": true,
+  "curve_number": 70,
+  "channel_velocity_ms": 0.5,
+  "initial_abstraction_ratio": 0.05,
+  "wash_efficiency": 0.05,
+  "transport_coefficient": 0.0005,
+  "max_cn_increase": 25.0,
+  "k_ash": 0.5,
+  "mean_annual_precip": 2500,
+  "rain_prob": 0.5,
+  "season_strength": 0.2,
+  "precip_sigma": 5.0,
+  "volcano_x": 1852398,
+  "volcano_y": 5703897,
+  "M0": 4.0,
+  "eruption_days": [
+    180
+  ],
+  "rho_ash": 1000.0,
+  "gamma0": 0.12,
+  "eta0": 1.2,
+  "wind_mu": 12,
+  "wind_sigma": 3
+}

@@ -11,69 +11,84 @@ import numpy as np
 import seaborn as sns
 
 
+
 def plot_stock_flow(precip_df, results, outfile, tag: str = None):
     """
     Creates a publication-quality, three-panel plot showing the relationship
-    between hydrologic flow (discharge) and sediment stock (storage).
-
-    Panel A: Driving rainfall
-    Panel B: Water and ash discharge (Flows)
-    Panel C: Ash storage in the network (Stock)
+    between hydrologic flow, sediment stock, and hillslope ash reserves.
     """
-    # --- 1. Process and merge all required timeseries data ---
+    # --- 1. Process all required timeseries data ---
     df_plot = precip_df.copy()
 
     # Process water discharge (Q)
     q_ts = results.get('discharge_ts')
     if q_ts is not None and not q_ts.empty:
+        # Create daily summary and RENAME datetime column to 'date' for merging
         daily_q = q_ts.set_index('datetime')['discharge_m3s'].resample('D').mean().reset_index()
-        daily_q.rename(columns={'datetime': 'date', 'discharge_m3s': 'Q_water'}, inplace=True)
-        df_plot = pd.merge(df_plot, daily_q, on='date', how='left')
+        daily_q.rename(columns={'datetime': 'date'}, inplace=True)
+        df_plot = pd.merge(df_plot, daily_q.rename(columns={'discharge_m3s': 'Q_water'}), on='date', how='left')
 
-    # Process ash discharge (Q_ash)
+    # Process ash discharge (Q_ash) to get daily mean and cumulative total
     aq_ts = results.get('ash_discharge_ts')
     if aq_ts is not None and not aq_ts.empty:
-        daily_aq = aq_ts.set_index('datetime')['ash_flux_kg_s'].resample('D').mean().reset_index()
-        daily_aq.rename(columns={'datetime': 'date', 'ash_flux_kg_s': 'Q_ash'}, inplace=True)
-        df_plot = pd.merge(df_plot, daily_aq, on='date', how='left')
+        # Calculate daily mean flux for panel (b)
+        daily_aq_flux = aq_ts.set_index('datetime')['ash_flux_kg_s'].resample('D').mean().reset_index()
+        daily_aq_flux.rename(columns={'datetime': 'date'}, inplace=True)
+        df_plot = pd.merge(df_plot, daily_aq_flux.rename(columns={'ash_flux_kg_s': 'Q_ash'}), on='date', how='left')
+        
+        # Calculate cumulative total discharged from the outlet for panel (c)
+        aq_ts['daily_ash_kg'] = aq_ts['ash_flux_kg_s'] * 86400 # convert kg/s to kg/day
+        aq_ts['cumulative_ash_outlet_kg'] = aq_ts['daily_ash_kg'].cumsum()
+        daily_cumulative_outlet = aq_ts.set_index('datetime')['cumulative_ash_outlet_kg'].resample('D').last().reset_index()
+        daily_cumulative_outlet.rename(columns={'datetime': 'date'}, inplace=True)
+        df_plot = pd.merge(df_plot, daily_cumulative_outlet, on='date', how='left')
 
-    # Process cumulative ash washed from hillslopes
-    cw_ts = results.get('cumulative_ash_wash_ts')
-    if cw_ts is not None and not cw_ts.empty:
-        daily_cw = cw_ts.set_index('datetime')['cumulative_ash_wash_kg'].resample('D').last().reset_index()
-        daily_cw.rename(columns={'datetime': 'date'}, inplace=True)
-        df_plot = pd.merge(df_plot, daily_cw, on='date', how='left')
 
-    # Process total ash stored in the river network
+    # Process total ash stored IN THE RIVER NETWORK
     snapshots = results.get("network_snapshots") or results.get("network_ts")
-    storage_over_time = []
     if snapshots:
-        is_nlrm = 'time_step' in snapshots[0].columns and 'datetime' not in snapshots[0].columns
+        storage_over_time = []
         start_date = df_plot['date'].min()
         for snap in snapshots:
             total_storage = snap['ash_storage'].sum()
-            current_date = (start_date + pd.Timedelta(days=snap['time_step'].iloc[0])) if is_nlrm else snap['datetime'].iloc[0].normalize()
-            storage_over_time.append({'date': current_date, 'total_storage_kg': total_storage})
+            # This part correctly uses 'date' already
+            current_date = (start_date + pd.Timedelta(days=snap['time_step'].iloc[0])) if 'time_step' in snap.columns else snap['datetime'].iloc[0].normalize()
+            storage_over_time.append({'date': current_date, 'network_storage_kg': total_storage})
         if storage_over_time:
-            storage_df = pd.DataFrame(storage_over_time).groupby('date')['total_storage_kg'].mean().reset_index()
+            storage_df = pd.DataFrame(storage_over_time).groupby('date')['network_storage_kg'].mean().reset_index()
             df_plot = pd.merge(df_plot, storage_df, on='date', how='left')
+
+    # Process total ash remaining ON THE HILLSLOPES
+    ha_ts = results.get('hillslope_ash_depth_ts')
+    scscn_model = results.get('scscn_model')
+    if ha_ts is not None and scscn_model is not None:
+        total_catchment_area = sum(c.area_m2 for c in scscn_model.catchments.values())
+        ha_ts['total_hillslope_ash_kg'] = (ha_ts['mean_ash_depth_mm'] / 1000) * total_catchment_area * 1000 # rho_ash
+        daily_hillslope_ash = ha_ts.set_index('datetime')['total_hillslope_ash_kg'].resample('D').mean().reset_index()
+        daily_hillslope_ash.rename(columns={'datetime': 'date'}, inplace=True)
+        df_plot = pd.merge(df_plot, daily_hillslope_ash, on='date', how='left')
+
 
     # Fill any missing values for plotting
     df_plot = df_plot.ffill().fillna(0)
 
     # --- 2. Create the 3-panel plot ---
     fig, (ax1, ax2, ax3) = plt.subplots(
-        3, 1, sharex=True, figsize=(10, 8),
-        gridspec_kw={'height_ratios': [1, 2, 2]} # Give more space to lower panels
+        3, 1, sharex=True, figsize=(12, 9),
+        gridspec_kw={'height_ratios': [1, 2, 2]}
     )
-    
+    if tag:
+        fig.suptitle(f"Stock and Flow Relationship\nSimulation: {tag}", fontsize=14)
+        fig.tight_layout(pad=3.0, rect=[0, 0, 1, 0.95])
+    else:
+        fig.tight_layout(pad=3.0)
+
     # --- Panel (a): Rainfall ---
     ax1.bar(df_plot['date'], df_plot['precip_mm'], color='cornflowerblue', width=1.0)
     ax1.set_ylabel('Rainfall\n(mm/day)')
     ax1.invert_yaxis()
     ax1.grid(True, linestyle='--', alpha=0.6)
     ax1.text(0.02, 0.95, '(a)', transform=ax1.transAxes, fontsize=12, va='top', ha='left', weight='bold')
-
 
     # --- Panel (b): Flows (Water and Ash Discharge) ---
     ax2.plot(df_plot['date'], df_plot.get('Q_water', 0), color='royalblue', label='Water Discharge ($Q$)')
@@ -91,28 +106,28 @@ def plot_stock_flow(precip_df, results, outfile, tag: str = None):
 
     lines, labels = ax2.get_legend_handles_labels()
     lines2, labels2 = ax2b.get_legend_handles_labels()
-    ax2b.legend(lines + lines2, labels + labels2, loc='upper right')
+    ax2b.legend(lines + lines2, labels + labels2, loc='center left')
 
-
-    # --- Panel (c): Stock (Ash Storage) ---
-    ax3.plot(df_plot['date'], df_plot.get('total_storage_kg', 0), color='purple', label='Ash Storage in Network')
-    ax3.set_ylabel('Ash Storage in Network\n(kg)', color='purple')
-    ax3.tick_params(axis='y', labelcolor='purple')
+    # --- Panel (c): Ash Stocks (Hillslope vs. Network vs. Discharged) ---
+    # ax3.plot(df_plot['date'], df_plot.get('network_storage_kg', 0), color='purple', label='Ash Storage in Network')
+    ax3.plot(df_plot['date'], df_plot.get('cumulative_ash_outlet_kg', 0), color='saddlebrown', linestyle=':', label='Cumulative Ash Discharged from Outlet')
+    ax3.set_ylabel('Ash Mass (kg)')
+    ax3.tick_params(axis='y')
     ax3.set_ylim(bottom=0)
     ax3.set_xlabel('Date')
-
+    
     ax3b = ax3.twinx()
-    ax3b.plot(df_plot['date'], df_plot.get('cumulative_ash_wash_kg', 0), color='darkgreen', linestyle=':', label='Cumulative Hillslope Input')
-    ax3b.set_ylabel('Cumulative Hillslope Input\n(kg)', color='darkgreen')
+    ax3b.fill_between(df_plot['date'], df_plot.get('total_hillslope_ash_kg', 0), color='darkgreen', alpha=0.2, label='Total Ash on Hillslopes')
+    ax3b.set_ylabel('Total Hillslope Ash (kg)', color='darkgreen')
     ax3b.tick_params(axis='y', labelcolor='darkgreen')
     ax3b.set_ylim(bottom=0)
+    
     ax3.grid(True, linestyle='--', alpha=0.6)
     ax3.text(0.02, 0.95, '(c)', transform=ax3.transAxes, fontsize=12, va='top', ha='left', weight='bold')
 
     lines, labels = ax3.get_legend_handles_labels()
     lines2, labels2 = ax3b.get_legend_handles_labels()
-    ax3b.legend(lines + lines2, labels + labels2, loc='upper right')
-
+    ax3b.legend(lines + lines2, labels + labels2, loc='center left')
 
     # --- Save the figure ---
     outfile.parent.mkdir(parents=True, exist_ok=True)
@@ -586,6 +601,7 @@ def plot_runoff_coefficient(results, precip_df, outfile):
 
 
     # Add this new function to the end of engines/visualize.py
+
 
 def plot_hillslope_ash_decay(results, precip_df, outfile):
     """

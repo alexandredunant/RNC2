@@ -290,38 +290,41 @@ def extract_network_from_dem(
     # ----------------------------
     
     import matplotlib.pyplot as plt
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-    # DEM in its native CRS
-    rasterio.plot.show(elev,
-        transform=transform,
-        ax=ax1,
-        cmap="terrain",
-        title="DEM")
+    from matplotlib.colors import Normalize
 
-    # Slope in its native CRS
-    rasterio.plot.show(slope,
-        transform=transform,
-        ax=ax2,
-        cmap="gray",
-        vmax=45,
-        title="SLOPE")
-    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 8))
+
+    # --- Get the geographic extent for correct axis labeling ---
+    # The extent is [left, right, bottom, top] in geographic coordinates
+    left, bottom, right, top = src.bounds
+
+    # --- Plot 1: DEM with its own colorbar ---
+    # Use imshow with origin='upper' and extent to ensure correct orientation
+    dem_plot = ax1.imshow(elev, cmap='terrain', 
+                        norm=Normalize(vmin=np.nanmin(elev), vmax=np.nanmax(elev)),
+                        extent=[left, right, bottom, top], origin='upper')
+    fig.colorbar(dem_plot, ax=ax1, orientation='vertical', label='Elevation (m)', shrink=0.8)
+    ax1.set_title("DEM and River Network")
+
+    # --- Plot 2: Slope with its own colorbar ---
+    slope_plot = ax2.imshow(slope, cmap='cividis', 
+                            norm=Normalize(vmin=0, vmax=45),
+                            extent=[left, right, bottom, top], origin='upper')
+    fig.colorbar(slope_plot, ax=ax2, orientation='vertical', label='Slope (degrees)', shrink=0.8)
+    ax2.set_title("Slope and River Network")
+
+    # --- Overlay river and catchment data on both plots ---
     for ax in (ax1, ax2):
         # Plot subbasin outlines
-        catchments.boundary.plot(ax=ax, color='red', linewidth=0.3)
-        # Plot streams with color based on stream order
-        rivers.plot(ax=ax, column='strahler', 
-            cmap='Blues', 
-            alpha=0.7,
-            linewidth=3, 
-            legend=True,
-            #  vmax=8000
-            )
-        # ax.set_axis_off()
+        catchments.boundary.plot(ax=ax, color='red', linewidth=0.5, alpha=0.6)
+        # Plot streams with line width based on stream order
+        rivers.plot(ax=ax, color='cyan', alpha=0.7, linewidth=rivers['order']/2)
+        ax.set_aspect('equal')
+        ax.tick_params(axis='x', rotation=45)
 
-    plt.tight_layout()
+    plt.tight_layout(pad=1.5)
     output_path = output_dir / "DEM_river_visual_check.png"
-    plt.savefig(output_path, dpi=300)
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"Saved DEM visualization to: {output_path}")
     plt.close()
     # ------------------------------

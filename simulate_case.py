@@ -16,6 +16,7 @@ from engines import (
 def simulate_case(cfg: dict):
     """
     Runs a single simulation case based on the provided configuration.
+    MODIFIED: Assumes a dem_path to a local .tif file is always provided.
     """
     # Create output directory
     out_dir = Path("outputs") / cfg.get("tag", "unnamed")
@@ -23,11 +24,13 @@ def simulate_case(cfg: dict):
 
     # --- DEM handling ---
     dem_path = cfg.get("dem_path")
+    if not dem_path:
+        raise ValueError("Configuration must contain a 'dem_path' to a local GeoTIFF file.")
+    
+    print(f"Using provided DEM: {dem_path}")
     dem, transform, crs = load_dem_from_file(dem_path)
-    print(f"Using DEM: {dem_path}")
 
     # --- Build hydrology network from DEM ---
-    # Pass the 'out_dir' variable to the function call to save the plot correctly
     network, basins = build_from_dem(
         dem_path=dem_path, 
         min_stream_order=cfg["min_stream_order"], 
@@ -39,7 +42,6 @@ def simulate_case(cfg: dict):
     precip_df = generate_precip(**cfg)
     
     # --- Generate ashfall time series ---
-    # Correctly unpack the two return values from generate_ashfall
     ash_df, eruption_days_used = generate_ashfall(
         dem=dem,
         transform=transform,
@@ -60,10 +62,7 @@ def simulate_case(cfg: dict):
     else:
         print("Using Non-Linear Reservoir Model (daily timesteps)")
 
-    print(f"DEBUG: Type of ash_df is {type(ash_df)}")
-
     # --- Run hydrology model ---
-    # Use the explicit, correct list of arguments for this function
     result = run_nlrm_cascade(
         edges_gdf=network,
         catch_df=basins,
@@ -81,12 +80,10 @@ def simulate_case(cfg: dict):
         k_ash=cfg.get("k_ash", 0.5)
     )
 
-    # Add the used eruption days to the results for plotting
     result['eruption_days'] = eruption_days_used
 
     # --- Save configuration ---
     with open(out_dir / "config.json", "w") as f:
-        # Make cfg serializable to save it as JSON
         serializable_cfg = {}
         for k, v in cfg.items():
             if isinstance(v, np.ndarray):
