@@ -15,7 +15,6 @@
 - [Usage](#usage)
 - [Key Scripts and Engines](#key-scripts-and-engines)
 - [Data](#data)
-- [Publications](#publications)
 - [Citation](#citation)
 
 -----
@@ -93,21 +92,13 @@ The `engines` directory contains the core components of the model:
 
 ## Data
 
-The GIS input data required for the scripts are located in the `data` folder (not included in this repository). Specifically, the model requires a DEM, which can be provided as a GeoTIFF file. If a local DEM is not found, the `simulate_case.py` script can download one using `pygmt`.
-
-## Publications
-
-*This is a placeholder for any publications that have resulted from this work. You can add links to papers, conference presentations, or other relevant materials here.*
+The GIS input data required for the scripts are located in the `data` folder (not included in this repository). Specifically, the model requires a DEM, which can be provided as a GeoTIFF file.
 
 ## Citation
-
-If you use this code in your research, please cite it as follows:
 
 ```
 N/A
 
-
-Replace `Author Name(s)` and `Year` with the appropriate information.
 
 ```
 ```
