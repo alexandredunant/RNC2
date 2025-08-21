@@ -84,7 +84,7 @@ To compare two different scenarios, you can use the `run_simulation_comparison.p
 The `engines` directory contains the core components of the model:
 
   - **`hydrology_scs_cn.py`**: Implements the SCS Curve Number model with a Unit Hydrograph for hourly hydrological routing. This includes calculations for runoff, infiltration, and the effects of ash on the curve number.
-  - **`hydrology.py`**: Contains the `run_nlrm_cascade` function which can run either the Non-Linear Reservoir Model (NLRM) or the SCS-CN model. It also includes a 'Cascade\` model for sediment transport in the river network.
+  - **`hydrology.py`**: Contains the `run_nlrm_cascade` function which can run the SCS-CN model. It also includes a 'Cascade\` model for sediment transport in the river network.
   - **`ashfall.py`**: Generates tephra (ash) thickness and distribution based on eruption parameters and a physical model.
   - **`precip.py`**: Generates daily precipitation time series using a gamma distribution and seasonal adjustments.
   - **`rivernet.py`**: Builds the river network and catchments from a Digital Elevation Model (DEM) using `pyflwdir`.
